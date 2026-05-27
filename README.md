@@ -63,3 +63,29 @@ To prevent unexpected costs if the link goes viral:
 - Game: https://rak3022.rarelabs.xyz
 - Collection: https://opensea.io/collection/rare-apepes
 - Discord: https://discord.gg/czW3CfqbKK
+
+---
+
+## Important fixed deployment structure
+
+This Next.js project must keep files in this layout:
+
+```text
+nubi-ai/
+  package.json
+  next.config.js
+  pages/
+    index.js
+    api/
+      chat.js
+```
+
+Do not deploy `nubi-standalone.html`. It is not needed for the Vercel/Next.js version and can expose client-side secrets.
+
+After uploading this folder to GitHub, set the Vercel environment variable:
+
+```text
+ANTHROPIC_API_KEY=your_anthropic_key_here
+```
+
+Then redeploy the project from Vercel.

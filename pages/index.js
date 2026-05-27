@@ -204,10 +204,23 @@ export default function NubiAI() {
           messages:next.map(m => ({role:m.role, content:m.content}))
         })
       });
-      const d = await r.json();
-      setMessages([...next, {role:"assistant", content:d.content[0].text}]);
-    } catch {
-      setMessages([...next, {role:"assistant", content:"*static* Signal's gone. Try again."}]);
+
+      const d = await r.json().catch(() => ({}));
+
+      if (!r.ok) {
+        const message = d?.error?.message || d?.error || `API request failed (${r.status})`;
+        throw new Error(message);
+      }
+
+      const reply = d?.content?.[0]?.text;
+      if (!reply) {
+        throw new Error("No response text returned from Anthropic.");
+      }
+
+      setMessages([...next, {role:"assistant", content:reply}]);
+    } catch (error) {
+      console.error("NUBI chat error:", error);
+      setMessages([...next, {role:"assistant", content:`*static* ${error?.message || "Signal's gone. Try again."}`}]);
     } finally { setLoading(false); }
   };
 
