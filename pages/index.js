@@ -197,13 +197,24 @@ export default function NubiAI() {
       const r = await fetch("/api/chat", {
         method:"POST",
         headers:{"Content-Type":"application/json"},
-        body:JSON.stringify({
-          model:"claude-sonnet-4-20250514",
-          max_tokens:1000,
-          system:NUBI_SYSTEM,
-          messages:next.map(m => ({role:m.role, content:m.content}))
-        })
-      });
+        const apiMessages = next
+  .filter(m => m.role === "user" || m.role === "assistant")
+  .filter((m, i) => !(i === 0 && m.role === "assistant"))
+  .map(m => ({
+    role: m.role,
+    content: m.content
+  }));
+
+const r = await fetch("/api/chat", {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({
+    model: "claude-sonnet-4-6",
+    max_tokens: 1000,
+    system: NUBI_SYSTEM,
+    messages: apiMessages
+  })
+});
 
       const d = await r.json().catch(() => ({}));
 
