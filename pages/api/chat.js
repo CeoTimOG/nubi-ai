@@ -7,75 +7,24 @@ export default async function handler(req, res) {
 
   if (!apiKey) {
     return res.status(500).json({
-      error: "API key not configured. Add ANTHROPIC_API_KEY in Vercel Project Settings, then redeploy."
+      error: "API key not configured. Add ANTHROPIC_API_KEY in Vercel, then redeploy."
     });
   }
 
   try {
     const requestBody = {
-      ...req.body,
-      model: req.body?.model || "claude-sonnet-4-6"
+      model: req.body?.model || "claude-sonnet-4-6",
+      max_tokens: req.body?.max_tokens || 1000,
+      system: req.body?.system,
+      messages: Array.isArray(req.body?.messages) ? req.body.messages : []
     };
 
-    const response = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-api-key": apiKey,
-        "anthropic-version": "2023-06-01"
-      },
-      body: JSON.stringify(requestBody)
-    });
-
-    const data = await response.json().catch(() => ({}));
-
-    if (!response.ok) {
-      const message =
-        data?.error?.message ||
-        data?.message ||
-        `Anthropic API failed with status ${response.status}`;
-
-      console.error("Anthropic API error:", {
-        status: response.status,
-        type: data?.error?.type,
-        message,
-        requestId: data?.request_id
-      });
-
-      return res.status(response.status).json({
-        error: message,
-        type: data?.error?.type || "anthropic_error",
-        status: response.status
+    if (!requestBody.system || requestBody.messages.length === 0) {
+      return res.status(400).json({
+        error: "Missing system prompt or messages."
       });
     }
 
-    return res.status(200).json(data);
-  } catch (error) {
-    console.error("API route error:", error);
-
-    return res.status(500).json({
-      error: "Server failed while contacting Anthropic."
-    });
-  }
-}export default async function handler(req, res) {
-  if (req.method !== "POST") {
-    return res.status(405).json({ error: "Method not allowed" });
-  }
-
-  const apiKey = process.env.ANTHROPIC_API_KEY?.trim();
-
-  if (!apiKey) {
-    return res.status(500).json({
-      error: "API key not configured. Add ANTHROPIC_API_KEY in Vercel Project Settings, then redeploy."
-    });
-  }
-
-  try {
-    const requestBody = {
-      ...req.body,
-      model: req.body?.model || "claude-sonnet-4-6"
-    };
-
     const response = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
       headers: {
@@ -89,20 +38,8 @@ export default async function handler(req, res) {
     const data = await response.json().catch(() => ({}));
 
     if (!response.ok) {
-      const message =
-        data?.error?.message ||
-        data?.message ||
-        `Anthropic API failed with status ${response.status}`;
-
-      console.error("Anthropic API error:", {
-        status: response.status,
-        type: data?.error?.type,
-        message,
-        requestId: data?.request_id
-      });
-
       return res.status(response.status).json({
-        error: message,
+        error: data?.error?.message || `Anthropic API failed with status ${response.status}`,
         type: data?.error?.type || "anthropic_error",
         status: response.status
       });
