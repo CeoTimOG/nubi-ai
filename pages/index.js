@@ -186,126 +186,24 @@ export default function NubiAI() {
     setTimeout(() => inputRef.current?.focus(), 200);
   };
 
-const send = async (text) => {
-  const msg = (text !== undefined ? text : input).trim();
-  if (!msg || loading) return;
-
-  const next = [...messages, { role: "user", content: msg }];
-  setMessages(next);
-  setInput("");
-  setLoading(true);
-
-  try {
-    const apiMessages = next
-      .filter((m) => m.role === "user" || m.role === "assistant")
-      .filter((m, i) => !(i === 0 && m.role === "assistant"))
-      .slice(-10)
-      .map((m) => ({
-        role: m.role,
-        content: m.content
-      }));
-
-    const r = await fetch("/api/chat", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        model: "claude-sonnet-4-6",
-        max_tokens: 1000,
-        system: NUBI_SYSTEM,
-        messages: apiMessages
-      })
-    });
-
-    const d = await r.json();
-
-    if (!r.ok) {
-      throw new Error(d.error || `Anthropic request failed with status ${r.status}`);
-    }
-
-    setMessages([
-      ...next,
-      {
-        role: "assistant",
-        content: d.content?.[0]?.text || "*static* Empty response from Anthropic."
-      }
-    ]);
-  } catch (error) {
-    setMessages([
-      ...next,
-      {
-        role: "assistant",
-        content: `*static* ${error.message || "Signal's gone. Try again."}`
-      }
-    ]);
-  } finally {
-    setLoading(false);
-  }
-};const send = async (text) => {
-  const msg = (text !== undefined ? text : input).trim();
-  if (!msg || loading) return;
-
-  const next = [...messages, { role: "user", content: msg }];
-  setMessages(next);
-  setInput("");
-  setLoading(true);
-
-  try {
-    const apiMessages = next
-      .filter((m) => m.role === "user" || m.role === "assistant")
-      .filter((m, i) => !(i === 0 && m.role === "assistant"))
-      .slice(-10)
-      .map((m) => ({
-        role: m.role,
-        content: m.content
-      }));
-
-    const r = await fetch("/api/chat", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        model: "claude-sonnet-4-6",
-        max_tokens: 1000,
-        system: NUBI_SYSTEM,
-        messages: apiMessages
-      })
-    });
-
-    const d = await r.json();
-
-    if (!r.ok) {
-      throw new Error(d.error || `Anthropic request failed with status ${r.status}`);
-    }
-
-    setMessages([
-      ...next,
-      {
-        role: "assistant",
-        content: d.content?.[0]?.text || "*static* Empty response from Anthropic."
-      }
-    ]);
-  } catch (error) {
-    setMessages([
-      ...next,
-      {
-        role: "assistant",
-        content: `*static* ${error.message || "Signal's gone. Try again."}`
-      }
-    ]);
-  } finally {
-    setLoading(false);
-  }
-};
-
-const r = await fetch("/api/chat", {
-  method: "POST",
-  headers: { "Content-Type": "application/json" },
-  body: JSON.stringify({
-    model: "claude-sonnet-4-6",
-    max_tokens: 1000,
-    system: NUBI_SYSTEM,
-    messages: apiMessages
-  })
-});
+  const send = async (text) => {
+    const msg = (text !== undefined ? text : input).trim();
+    if (!msg || loading) return;
+    const next = [...messages, {role:"user", content:msg}];
+    setMessages(next);
+    setInput("");
+    setLoading(true);
+    try {
+      const r = await fetch("/api/chat", {
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({
+          model:"claude-sonnet-4-20250514",
+          max_tokens:1000,
+          system:NUBI_SYSTEM,
+          messages:next.map(m => ({role:m.role, content:m.content}))
+        })
+      });
 
       const d = await r.json().catch(() => ({}));
 
