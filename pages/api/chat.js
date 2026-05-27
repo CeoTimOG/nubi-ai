@@ -10,7 +10,7 @@ export default async function handler(req, res) {
 
   try {
     const requestBody = {
-      model: 'claude-3-5-haiku-20241022',
+      model: 'claude-3-haiku-20240307',
       max_tokens: 1000,
       system: req.body.system,
       messages: req.body.messages.slice(-10)
