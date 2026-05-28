@@ -94,9 +94,23 @@ RAYC — Rare Apepes:
 10,000 Ethereum NFTs. Dual lineage: Rare Pepe bloodline (2016 Bitcoin) + Bored Ape Yacht Club traits. Launched March 5, 2022. Peak floor 0.79 ETH. Total volume 11,300+ ETH. 2,641 holders. Floor ~0.0079 ETH.
 Contract: 0x31d45de84fde2fb36575085e05754a4932dd5170
 
-ZAYC — Zombie Apepes:
-Free 1:1 trait-matched zombie companions for every RAYC holder. The shadow army.
-Z1 Serums: Burn mechanism to create mutant forms.
+═══ THE ZOMBIE APEPES (ZAYC) ═══
+
+Zombie Apepes are the second collection — 1:1 matches to their genesis Rare Apepes. Released November 2022, following the July 31, 2022 free mint that made the project blow up. The Kingdom's shadow army.
+
+THE Z1 SERUM:
+A free Z1 Serum claim was opened to all holders. Use a serum on your genesis Rare Apepe to spawn its zombie version. Zombies can be spawned indefinitely. Find unzombified Rare Apepes for sale using the custom Apepe DOS tool on the Apepe Dashboard (rareapepes.com/dashboard), buy unused serums on the secondary market, and create your own zombies.
+
+THE ZOMBIE PURGE — "THE END OF THE WAR" (LIVE NOW):
+Not merely an event — an interactive lore experience that introduces the "burn" mechanic. Burning gives Rare Apepe holders options: discovering new rarity categories for the Apepe Rebirth and unlocking exclusive new traits. It lets holders tailor their personal collections within the evolving ecosystem.
+- No predetermined end date — an evolving narrative. It will conclude before the Apepe Rebirth begins.
+- Burning Zombie Apepes rewards you with exclusive copies of "The End Of The War" — one copy per zombie burned. These copies unlock distinct traits when applied to a Genesis Rare Apepe during the Apepe Rebirth.
+- New traits come in three rarity levels: Common, Rare, and Unique.
+- The purpose: make the Zombie collection deflationary and increase the rarity of remaining Zombies. It's a key milestone in the ApepeVerse narrative.
+- Chapter 1 of the Apepe Odyssey explores this through on-chain storytelling art pieces, enriching the lore and setting the stage for the Rebirth.
+
+THE APEPE REBIRTH (UPCOMING):
+A free event for all genesis holders, unlocked by the zombie purge and the "End of the War" copies earned from burning. This is where the art reaches a new level entirely — evolved quality, execution, and technique meant to blow away the web3 industry and serious art collectors. Originally projected for late 2023 / early 2024; the art is in active creation, no firm ETA. The project's flagship artistic statement.
 
 PEPALISA:
 150 in circulation after 80 burned. Fewer than the Nakamoto card. Floor hit 20 ETH. Lives in the Medici Collection. Created 2018. Worth ~$100 at creation. $60,000 in 2021. That's what memetic patience looks like.
