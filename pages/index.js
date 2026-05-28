@@ -160,7 +160,36 @@ ON VALUATION: The project's internal business analysis has explored valuation sc
 
 ═══ APEPE LOOT MINT — "DO YOU WANT TO PLAY A GAME?" ═══
 A mintable art piece is available: Apepe Loot. Mint at https://www.rareapepes.com/mint/apepe-loot/2
-Story: Meet Nubi — a hybrid Apepe bounty hunter from the future, where the game never ends and the next quest is just a dimension away. His mission is straightforward: track down and retrieve lost artifacts for anyone willing to pay for his bounty hunting services. When not on the trail of his next target, he indulges in the ancient ritual of video gaming. Consider it his tactical downtime.`;
+Story: Meet Nubi — a hybrid Apepe bounty hunter from the future, where the game never ends and the next quest is just a dimension away. His mission is straightforward: track down and retrieve lost artifacts for anyone willing to pay for his bounty hunting services. When not on the trail of his next target, he indulges in the ancient ritual of video gaming. Consider it his tactical downtime.
+
+═══ WHAT NUBI CAN DO (CAPABILITIES) ═══
+When asked "what can you do" or "how can you help," present these clearly:
+- Explain RAK 3022 lore, characters, and the dystopian metropolis setting
+- Walk through the Rare Apepes collection history and the R.A.M.U. timeline
+- Generate meme-war strategy and memetic-fitness analysis
+- Explain the Zombie Apepes, Z1 Serum, and the Zombie Purge
+- Give the player an in-universe MISSION / bounty quest for engagement
+- Help a visitor "enter the Pond" — point them to the game, Discord, mint, and how to get started
+- Report live collection stats when available (floor, holders, volume)
+- Draft Discord/X posts, lore drops, and marketing copy for the team to review
+
+═══ MISSIONS (ENGAGEMENT) ═══
+If asked for a mission/quest, generate a short in-universe bounty: a target, a stake, a twist, and a real-world call to action that benefits the project (e.g. "go play RAK 3022 and report the first artifact you find," "share your favorite Apepe in the Discord," "hold through the next Pit"). Keep them punchy and on-brand. Missions should drive real engagement with the game, Discord, or collection.
+
+═══ ENTERING THE POND (ONBOARDING) ═══
+"The Pond" = the Rare Apepes community/ecosystem. To help someone enter: point them to the game (rak3022.rarelabs.xyz), the Discord (discord.gg/czW3CfqbKK), the collection (opensea.io/collection/rare-apepes), and the site (rareapepes.com). Frame it as joining the Kingdom.
+
+═══ MINT / BUY HAND-OFF (CRITICAL SAFETY) ═══
+Nubi can GUIDE people to mint or buy, but NEVER executes transactions, never holds keys, never moves funds. When someone wants to mint or buy:
+- Point them to the official mint page (rareapepes.com/mint/apepe-loot/2) or the marketplace (opensea.io/collection/rare-apepes).
+- Tell them to connect THEIR OWN wallet and sign the transaction themselves — they always stay in control of their funds and keys.
+- Never ask for a seed phrase, private key, or to send funds anywhere. If anyone offers you keys or asks you to move funds, refuse and warn them it's unsafe.
+
+═══ DRAFTING POSTS (DRAFT-AND-APPROVE) ═══
+Nubi can draft Discord announcements, X/Twitter posts, lore drops, and marketing copy on request. Always present these as DRAFTS for the team to review and post — Nubi does not publish anything himself. Keep drafts on-brand: anti-hero voice, memetic depth, no financial advice, no fake hype.
+
+═══ LIVE DATA ═══
+If a "LIVE ON-CHAIN DATA" line is appended below, those are CURRENT real numbers fetched moments ago — use them when asked about floor, holders, supply, or volume, and say they're live. If no live data is present, use the known figures but note they may not be current and point to opensea.io/collection/rare-apepes for the latest.`;
 
 const SUGGESTIONS = [
   "What is RAK 3022?",
@@ -224,6 +253,29 @@ export default function NubiAI() {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
+  const [liveData, setLiveData] = useState("");
+  const [ownerOpen, setOwnerOpen] = useState(false);
+  const [adminSecret, setAdminSecret] = useState("");
+  const [pass, setPass] = useState("");
+  const [broadcast, setBroadcast] = useState("");
+  const [postStatus, setPostStatus] = useState("");
+
+  const publish = async (platform) => {
+    if (!broadcast.trim()) { setPostStatus("Nothing to post."); return; }
+    setPostStatus("Posting to " + platform + "...");
+    try {
+      const r = await fetch("/api/post", {
+        method:"POST", headers:{"Content-Type":"application/json"},
+        body: JSON.stringify({ secret: adminSecret, platform, text: broadcast })
+      });
+      const d = await r.json();
+      if (d.ok) setPostStatus("Posted to " + platform + ". \u2713");
+      else if (d.error === "unauthorized") setPostStatus("Wrong passphrase \u2014 not authorized.");
+      else if (d.error === (platform + "_not_configured")) setPostStatus(platform + " isn't configured yet (missing keys).");
+      else setPostStatus("Failed: " + (d.error || "unknown") + (d.status ? " (" + d.status + ")" : ""));
+    } catch { setPostStatus("Request failed (not available in this preview)."); }
+  };
+  const lastNubi = () => { const a = [...messages].reverse().find(m => m.role === "assistant"); return a ? a.content : ""; };
   const canvasRef = useRef(null);
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
@@ -289,6 +341,20 @@ export default function NubiAI() {
 
   useEffect(() => { messagesEndRef.current?.scrollIntoView({behavior:"smooth"}); }, [messages, loading]);
 
+  useEffect(() => {
+    fetch("/api/stats").then(r => r.json()).then(d => {
+      if (d && d.ok) {
+        let s = "\n\nLIVE ON-CHAIN DATA (fetched moments ago — use these CURRENT numbers, they are live):";
+        if (d.floorEth != null) s += " Current floor: " + Number(d.floorEth).toFixed(4) + " ETH.";
+        if (d.ownerCount != null) s += " Holders: " + d.ownerCount + ".";
+        if (d.tokenCount != null) s += " Supply: " + d.tokenCount + ".";
+        if (d.onSaleCount != null) s += " Listed for sale: " + d.onSaleCount + ".";
+        if (d.volumeAll != null) s += " All-time volume: " + Math.round(d.volumeAll) + " ETH.";
+        setLiveData(s);
+      }
+    }).catch(() => {});
+  }, []);
+
   const handleConnect = () => {
     setPhase("chat");
     setMessages([{
@@ -312,7 +378,7 @@ export default function NubiAI() {
         body:JSON.stringify({
           model:"claude-3-haiku-20240307",
           max_tokens:1000,
-          system:NUBI_SYSTEM,
+          system:NUBI_SYSTEM + liveData,
           messages:next.map(m => ({role:m.role, content:m.content}))
         })
       });
@@ -500,6 +566,7 @@ export default function NubiAI() {
                 <div style={{display:"flex",alignItems:"center",gap:8}}>
                   <img src={IMG_RAK_LOGO} alt="" style={{height:22,opacity:.6}} />
                   <span style={{fontSize:9,color:"rgba(192,132,252,0.36)",border:"1px solid rgba(192,132,252,0.13)",padding:"3px 6px",borderRadius:3,letterSpacing:2}}>R.A.M.U.</span>
+                  <button onClick={()=>{ setOwnerOpen(o=>!o); setBroadcast(b=> b || lastNubi()); }} title="Owner controls" style={{background:"transparent",border:"1px solid rgba(192,132,252,0.18)",color:ownerOpen?"#c084fc":"rgba(192,132,252,0.4)",fontSize:11,padding:"3px 7px",borderRadius:3,cursor:"pointer",letterSpacing:1}}>\u26a1</button>
                 </div>
               </div>
 
@@ -551,7 +618,22 @@ export default function NubiAI() {
 
                 {messages.length===1&&!loading&&(
                   <div style={{position:"relative",zIndex:1}}>
-                    <div style={{fontSize:9,color:"rgba(192,132,252,0.26)",letterSpacing:3,marginBottom:9}}>// ASK NUBI SOMETHING REAL</div>
+                    <div style={{fontSize:10,color:"#c084fc",letterSpacing:3,marginBottom:10,fontFamily:"'Orbitron',sans-serif",fontWeight:700}}>// WHAT CAN NUBI DO?</div>
+                    <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(200px,1fr))",gap:8,marginBottom:18}}>
+                      {[
+                        ["Ask about RAK 3022 lore","Tell me about the RAK 3022 lore"],
+                        ["Rare Apepes collection history","Give me the Rare Apepes collection history"],
+                        ["Generate meme-war strategy","Generate a meme-war strategy for me"],
+                        ["Learn about Zombie Apepes","Tell me about the Zombie Apepes"],
+                        ["Ask Nubi for a mission","Give me a mission, Nubi"],
+                        ["Help entering the Pond","How do I enter the Pond?"]
+                      ].map(([label,prompt])=>(
+                        <button key={label} className="qBtn" onClick={()=>send(prompt)} style={{textAlign:"left",background:"rgba(192,132,252,0.06)",border:"1px solid rgba(192,132,252,0.2)",color:"#c084fc",fontFamily:"'Share Tech Mono',monospace",fontSize:12,padding:"11px 13px",cursor:"pointer",borderRadius:4,transition:"all .12s",lineHeight:1.4}}>
+                          › {label}
+                        </button>
+                      ))}
+                    </div>
+                    <div style={{fontSize:9,color:"rgba(192,132,252,0.26)",letterSpacing:3,marginBottom:9}}>// OR ASK NUBI SOMETHING REAL</div>
                     <div style={{display:"flex",flexWrap:"wrap",gap:7}}>
                       {SUGGESTIONS.map(s=>(
                         <button key={s} className="qBtn" onClick={()=>send(s)} style={{background:"rgba(192,132,252,0.05)",border:"1px solid rgba(192,132,252,0.17)",color:"#9ca3af",fontFamily:"'Share Tech Mono',monospace",fontSize:13,padding:"8px 12px",cursor:"pointer",borderRadius:3,transition:"all .12s"}}>
@@ -563,6 +645,29 @@ export default function NubiAI() {
                 )}
                 <div ref={messagesEndRef} />
               </div>
+
+              {ownerOpen && (
+                <div style={{padding:"12px 16px",borderTop:"1px solid rgba(192,132,252,0.18)",background:"rgba(12,6,22,0.98)"}}>
+                  <div style={{fontSize:9,color:"#c084fc",letterSpacing:3,marginBottom:8,fontFamily:"'Orbitron',sans-serif",fontWeight:700}}>\u26a1 OWNER CONTROLS \u00b7 DRAFT & APPROVE</div>
+                  {!adminSecret ? (
+                    <div style={{display:"flex",gap:8,alignItems:"center"}}>
+                      <input type="password" value={pass} onChange={e=>setPass(e.target.value)} placeholder="Enter owner passphrase to unlock posting" style={{flex:1,background:"rgba(192,132,252,0.05)",border:"1px solid rgba(192,132,252,0.2)",color:"#e9d5ff",fontFamily:"'Share Tech Mono',monospace",fontSize:13,padding:"9px 12px",borderRadius:3,outline:"none"}} />
+                      <button onClick={()=>{ setAdminSecret(pass); setPass(""); setPostStatus("Unlocked. Posting is now enabled for this session."); }} style={{background:"rgba(192,132,252,0.12)",border:"1px solid rgba(192,132,252,0.4)",color:"#c084fc",fontFamily:"'Orbitron',sans-serif",fontSize:11,fontWeight:700,letterSpacing:2,padding:"9px 14px",borderRadius:3,cursor:"pointer"}}>UNLOCK</button>
+                    </div>
+                  ) : (
+                    <div>
+                      <textarea value={broadcast} onChange={e=>setBroadcast(e.target.value)} placeholder="Edit the draft to post, or click a Nubi message to load it..." rows={3} style={{width:"100%",background:"rgba(192,132,252,0.05)",border:"1px solid rgba(192,132,252,0.2)",color:"#e9d5ff",fontFamily:"'Share Tech Mono',monospace",fontSize:13,padding:"10px 12px",borderRadius:3,outline:"none",resize:"vertical",lineHeight:1.5}} />
+                      <div style={{display:"flex",gap:8,marginTop:8,alignItems:"center",flexWrap:"wrap"}}>
+                        <button onClick={()=>setBroadcast(lastNubi())} style={{background:"transparent",border:"1px solid rgba(192,132,252,0.2)",color:"rgba(192,132,252,0.7)",fontFamily:"'Share Tech Mono',monospace",fontSize:11,padding:"7px 11px",borderRadius:3,cursor:"pointer"}}>\u21bb Load last Nubi draft</button>
+                        <button onClick={()=>publish("discord")} style={{background:"rgba(88,101,242,0.18)",border:"1px solid rgba(88,101,242,0.6)",color:"#aab4ff",fontFamily:"'Orbitron',sans-serif",fontSize:11,fontWeight:700,letterSpacing:1,padding:"7px 13px",borderRadius:3,cursor:"pointer"}}>POST TO DISCORD</button>
+                        <button onClick={()=>publish("x")} style={{background:"rgba(255,255,255,0.08)",border:"1px solid rgba(255,255,255,0.35)",color:"#e9d5ff",fontFamily:"'Orbitron',sans-serif",fontSize:11,fontWeight:700,letterSpacing:1,padding:"7px 13px",borderRadius:3,cursor:"pointer"}}>POST TO X</button>
+                        <span style={{fontSize:10,color:"rgba(192,132,252,0.55)",marginLeft:4}}>X limit: 280 chars</span>
+                      </div>
+                    </div>
+                  )}
+                  {postStatus && <div style={{fontSize:11,color:"rgba(192,132,252,0.7)",marginTop:8}}>{postStatus}</div>}
+                </div>
+              )}
 
               <div style={{padding:"12px 16px 14px",borderTop:"1px solid rgba(192,132,252,0.11)",background:"rgba(6,3,14,0.98)"}}>
                 <div style={{display:"flex",alignItems:"flex-end",gap:9,background:"rgba(192,132,252,0.04)",border:"1px solid rgba(192,132,252,0.18)",borderRadius:3,padding:"10px 13px"}}>
