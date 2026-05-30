@@ -45,9 +45,18 @@ async function getRecentSales(key) {
         (e.asset && e.asset.identifier) ||
         null;
       const name = (e.nft && e.nft.name) || (e.asset && e.asset.name) || null;
+      const image =
+        (e.nft && (e.nft.display_image_url || e.nft.image_url)) ||
+        (e.asset && (e.asset.display_image_url || e.asset.image_url)) ||
+        null;
+      const permalink =
+        (e.nft && e.nft.opensea_url) ||
+        (tokenId != null ? ("https://opensea.io/assets/ethereum/" + CONTRACT + "/" + tokenId) : null);
       return {
         tokenId,
         name,
+        image,
+        permalink,
         priceEth: priceEth != null ? Number(priceEth.toFixed(4)) : null,
         symbol: (pay && pay.symbol) || "ETH",
         time: e.event_timestamp || e.closing_date || null,
