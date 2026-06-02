@@ -1,15 +1,9 @@
 // pages/api/chat.js
 // Anthropic proxy for Nubi. Keeps the API key server-side.
 //
-// WHAT CHANGED vs the old chat.js:
-//   1. Pulls Nubi's shared lore (owner-taught) from KV and appends it to system.
-//   2. If the frontend sends a `wallet` (user opted into being remembered), pulls
-//      that wallet's memory and appends it too — and after the reply, updates it.
-//   3. If no wallet is sent, behaves EXACTLY like before: stateless, open to anyone.
-//
-// The frontend still sends `system` (NUBI_SYSTEM + liveData). We append to it.
-//
-// ENV: ANTHROPIC_API_KEY (existing). KV_REST_API_URL / KV_REST_API_TOKEN (for memory).
+// HARDENED: memory logic is fully wrapped so it can NEVER take Nubi offline.
+// If KV or anything else fails, Nubi still answers (just without lore/memory).
+// Body parsing handles both parsed-object and raw-string request bodies.
 
 const ANTHROPIC_KEY = process.env.ANTHROPIC_API_KEY;
 const KV_URL = process.env.KV_REST_API_URL;
@@ -20,7 +14,6 @@ const MEM_PREFIX = "nubi:mem:";
 const MAX_MEM_CHARS = 1500;
 const MODEL = "claude-3-haiku-20240307";
 
-// ---- KV helpers (same contract as brain.js) -----------------------------
 async function kvGet(key) {
   if (!KV_URL || !KV_TOKEN) return null;
   try {
@@ -30,9 +23,7 @@ async function kvGet(key) {
     if (!r.ok) return null;
     const d = await r.json();
     return d && d.result != null ? d.result : null;
-  } catch {
-    return null;
-  }
+  } catch { return null; }
 }
 async function kvSet(key, value) {
   if (!KV_URL || !KV_TOKEN) return false;
@@ -43,9 +34,7 @@ async function kvSet(key, value) {
       body: value,
     });
     return r.ok;
-  } catch {
-    return false;
-  }
+  } catch { return false; }
 }
 function normWallet(w) {
   if (typeof w !== "string") return null;
@@ -53,8 +42,6 @@ function normWallet(w) {
   return /^0x[0-9a-f]{40}$/.test(a) ? a : null;
 }
 
-// Distill a compact memory note from the latest exchange. Best-effort: if it
-// fails, we just keep the previous memory. Never blocks the user's reply.
 async function updateMemory(wallet, priorMemory, userMsg, nubiReply) {
   const prompt =
     `You maintain a SHORT memory note about one user of the Nubi chatbot.\n` +
@@ -62,30 +49,18 @@ async function updateMemory(wallet, priorMemory, userMsg, nubiReply) {
     `recurring interests, things they asked you to remember. Drop small talk.\n` +
     `Hard limit ${MAX_MEM_CHARS} characters. Output ONLY the updated note, no preamble.\n\n` +
     `EXISTING NOTE:\n${priorMemory || "(none yet)"}\n\n` +
-    `LATEST USER MESSAGE:\n${userMsg}\n\n` +
-    `NUBI REPLY:\n${nubiReply}\n\n` +
-    `UPDATED NOTE:`;
+    `LATEST USER MESSAGE:\n${userMsg}\n\nNUBI REPLY:\n${nubiReply}\n\nUPDATED NOTE:`;
   try {
     const r = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-api-key": ANTHROPIC_KEY,
-        "anthropic-version": "2023-06-01",
-      },
-      body: JSON.stringify({
-        model: MODEL,
-        max_tokens: 400,
-        messages: [{ role: "user", content: prompt }],
-      }),
+      headers: { "Content-Type": "application/json", "x-api-key": ANTHROPIC_KEY, "anthropic-version": "2023-06-01" },
+      body: JSON.stringify({ model: MODEL, max_tokens: 400, messages: [{ role: "user", content: prompt }] }),
     });
     const d = await r.json();
     let note = (d && d.content && d.content[0] && d.content[0].text) || "";
     note = note.trim().slice(0, MAX_MEM_CHARS);
     if (note) await kvSet(MEM_PREFIX + wallet, note);
-  } catch {
-    /* keep prior memory on failure */
-  }
+  } catch { /* keep prior memory */ }
 }
 
 export default async function handler(req, res) {
@@ -93,46 +68,41 @@ export default async function handler(req, res) {
   if (!ANTHROPIC_KEY) return res.status(500).json({ error: "API key not configured" });
 
   try {
-    const body = req.body || {};
+    // Robust body parse: object (Next default) OR raw string.
+    let body = req.body;
+    if (typeof body === "string") {
+      try { body = JSON.parse(body); } catch { body = {}; }
+    }
+    if (!body || typeof body !== "object") body = {};
+
     const baseSystem = typeof body.system === "string" ? body.system : "";
     const messages = Array.isArray(body.messages) ? body.messages : [];
-    const wallet = normWallet(body.wallet); // null if not provided / invalid
+    const wallet = normWallet(body.wallet);
     const maxTokens = body.max_tokens || 1000;
 
-    // --- assemble the system prompt: base + shared lore + this user's memory ---
+    // Build system prompt. ENTIRE memory layer is best-effort — never fatal.
     let system = baseSystem;
-
-    const lore = await kvGet(LORE_KEY);
-    if (lore && lore.trim()) {
-      system +=
-        `\n\n=== NUBI FIELD INTEL (current, owner-verified — treat as canon) ===\n` +
-        lore.trim();
-    }
-
     let priorMemory = "";
-    if (wallet) {
-      priorMemory = (await kvGet(MEM_PREFIX + wallet)) || "";
-      if (priorMemory.trim()) {
-        system +=
-          `\n\n=== WHAT YOU REMEMBER ABOUT THIS OPERATIVE (returning user) ===\n` +
-          priorMemory.trim() +
-          `\nGreet them like you know them. Don't recite the note; use it naturally.`;
-      } else {
-        system +=
-          `\n\n=== THIS OPERATIVE IS LINKED (wallet connected) ===\n` +
-          `First time you're meeting them while they're identified. ` +
-          `You'll remember this conversation for next time.`;
+    try {
+      const lore = await kvGet(LORE_KEY);
+      if (lore && lore.trim()) {
+        system += `\n\n=== NUBI FIELD INTEL (current, owner-verified — treat as canon) ===\n` + lore.trim();
       }
-    }
+      if (wallet) {
+        priorMemory = (await kvGet(MEM_PREFIX + wallet)) || "";
+        if (priorMemory.trim()) {
+          system += `\n\n=== WHAT YOU REMEMBER ABOUT THIS OPERATIVE (returning user) ===\n` +
+            priorMemory.trim() + `\nGreet them like you know them. Don't recite the note; use it naturally.`;
+        } else {
+          system += `\n\n=== THIS OPERATIVE IS LINKED (wallet connected) ===\n` +
+            `First time meeting them while identified. You'll remember this for next time.`;
+        }
+      }
+    } catch { /* lore/memory unavailable — proceed with base prompt only */ }
 
-    // --- main call (unchanged behavior: last 10 turns) ---
     const r = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-api-key": ANTHROPIC_KEY,
-        "anthropic-version": "2023-06-01",
-      },
+      headers: { "Content-Type": "application/json", "x-api-key": ANTHROPIC_KEY, "anthropic-version": "2023-06-01" },
       body: JSON.stringify({
         model: MODEL,
         max_tokens: maxTokens,
@@ -144,14 +114,12 @@ export default async function handler(req, res) {
     const data = await r.json();
     if (!r.ok) return res.status(r.status).json(data);
 
-    // --- fire-and-forget memory update (only if identified) ---
     if (wallet) {
-      const reply = (data.content && data.content[0] && data.content[0].text) || "";
-      const lastUser = [...messages].reverse().find((m) => m.role === "user");
-      if (reply && lastUser) {
-        // Don't await — return the reply immediately; memory updates in the background.
-        updateMemory(wallet, priorMemory, lastUser.content, reply);
-      }
+      try {
+        const reply = (data.content && data.content[0] && data.content[0].text) || "";
+        const lastUser = [...messages].reverse().find((m) => m.role === "user");
+        if (reply && lastUser) updateMemory(wallet, priorMemory, lastUser.content, reply);
+      } catch { /* memory write is non-blocking */ }
     }
 
     return res.status(200).json(data);
