@@ -18,7 +18,7 @@ const KV_TOKEN = process.env.KV_REST_API_TOKEN;
 const LORE_KEY = "nubi:lore";
 const MEM_PREFIX = "nubi:mem:";
 const MAX_MEM_CHARS = 1500;
-const MODEL = "claude-3-haiku-20240307";
+const MODEL = "claude-haiku-4-5-20251001";
 
 // ---- KV helpers (same contract as brain.js) -----------------------------
 async function kvGet(key) {
