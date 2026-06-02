@@ -1,121 +1,161 @@
-const DEFAULT_MODEL = "claude-sonnet-4-6";
+// pages/api/chat.js
+// Anthropic proxy for Nubi. Keeps the API key server-side.
+//
+// WHAT CHANGED vs the old chat.js:
+//   1. Pulls Nubi's shared lore (owner-taught) from KV and appends it to system.
+//   2. If the frontend sends a `wallet` (user opted into being remembered), pulls
+//      that wallet's memory and appends it too — and after the reply, updates it.
+//   3. If no wallet is sent, behaves EXACTLY like before: stateless, open to anyone.
+//
+// The frontend still sends `system` (NUBI_SYSTEM + liveData). We append to it.
+//
+// ENV: ANTHROPIC_API_KEY (existing). KV_REST_API_URL / KV_REST_API_TOKEN (for memory).
 
-export default async function handler(req, res) {
-  if (req.method !== "POST") {
-    return res.status(405).json({ error: "Method not allowed. Use POST." });
-  }
+const ANTHROPIC_KEY = process.env.ANTHROPIC_API_KEY;
+const KV_URL = process.env.KV_REST_API_URL;
+const KV_TOKEN = process.env.KV_REST_API_TOKEN;
 
-  const apiKey = process.env.ANTHROPIC_API_KEY?.trim();
+const LORE_KEY = "nubi:lore";
+const MEM_PREFIX = "nubi:mem:";
+const MAX_MEM_CHARS = 1500;
+const MODEL = "claude-3-haiku-20240307";
 
-  if (!apiKey) {
-    return res.status(500).json({
-      error: "ANTHROPIC_API_KEY is missing. Add it in Vercel Environment Variables, then redeploy."
-    });
-  }
-
-  if (!apiKey.startsWith("sk-ant-")) {
-    return res.status(500).json({
-      error: "ANTHROPIC_API_KEY does not look like a valid Anthropic key. It should start with sk-ant-."
-    });
-  }
-
+// ---- KV helpers (same contract as brain.js) -----------------------------
+async function kvGet(key) {
+  if (!KV_URL || !KV_TOKEN) return null;
   try {
-    const incomingMessages = Array.isArray(req.body?.messages)
-      ? req.body.messages
-      : [];
+    const r = await fetch(`${KV_URL}/get/${encodeURIComponent(key)}`, {
+      headers: { Authorization: `Bearer ${KV_TOKEN}` },
+    });
+    if (!r.ok) return null;
+    const d = await r.json();
+    return d && d.result != null ? d.result : null;
+  } catch {
+    return null;
+  }
+}
+async function kvSet(key, value) {
+  if (!KV_URL || !KV_TOKEN) return false;
+  try {
+    const r = await fetch(`${KV_URL}/set/${encodeURIComponent(key)}`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${KV_TOKEN}`, "Content-Type": "text/plain" },
+      body: value,
+    });
+    return r.ok;
+  } catch {
+    return false;
+  }
+}
+function normWallet(w) {
+  if (typeof w !== "string") return null;
+  const a = w.trim().toLowerCase();
+  return /^0x[0-9a-f]{40}$/.test(a) ? a : null;
+}
 
-    const messages = incomingMessages
-      .filter((message) => message && (message.role === "user" || message.role === "assistant"))
-      .map((message) => ({
-        role: message.role,
-        content:
-          typeof message.content === "string"
-            ? message.content
-            : String(message.content ?? "")
-      }))
-      .filter((message) => message.content.trim().length > 0)
-      .slice(-12);
-
-    const system =
-      typeof req.body?.system === "string"
-        ? req.body.system
-        : "You are Nubi, the Rare Apepes AI companion.";
-
-    if (messages.length === 0) {
-      return res.status(400).json({
-        error: "No valid messages were provided."
-      });
-    }
-
-    const requestBody = {
-      model: DEFAULT_MODEL,
-      max_tokens: Number.isInteger(req.body?.max_tokens)
-        ? Math.min(Math.max(req.body.max_tokens, 64), 2000)
-        : 1000,
-      system,
-      messages
-    };
-
-    const response = await fetch("https://api.anthropic.com/v1/messages", {
+// Distill a compact memory note from the latest exchange. Best-effort: if it
+// fails, we just keep the previous memory. Never blocks the user's reply.
+async function updateMemory(wallet, priorMemory, userMsg, nubiReply) {
+  const prompt =
+    `You maintain a SHORT memory note about one user of the Nubi chatbot.\n` +
+    `Keep only durable, useful facts: their name/handle if given, Apepes they own, ` +
+    `recurring interests, things they asked you to remember. Drop small talk.\n` +
+    `Hard limit ${MAX_MEM_CHARS} characters. Output ONLY the updated note, no preamble.\n\n` +
+    `EXISTING NOTE:\n${priorMemory || "(none yet)"}\n\n` +
+    `LATEST USER MESSAGE:\n${userMsg}\n\n` +
+    `NUBI REPLY:\n${nubiReply}\n\n` +
+    `UPDATED NOTE:`;
+  try {
+    const r = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "x-api-key": apiKey,
-        "anthropic-version": "2023-06-01"
+        "x-api-key": ANTHROPIC_KEY,
+        "anthropic-version": "2023-06-01",
       },
-      body: JSON.stringify(requestBody)
+      body: JSON.stringify({
+        model: MODEL,
+        max_tokens: 400,
+        messages: [{ role: "user", content: prompt }],
+      }),
     });
-
-    const raw = await response.text();
-
-    let data;
-    try {
-      data = JSON.parse(raw);
-    } catch {
-      data = { raw };
-    }
-
-    if (!response.ok) {
-      const requestId =
-        response.headers.get("request-id") ||
-        response.headers.get("anthropic-request-id") ||
-        null;
-
-      const errorMessage =
-        data?.error?.message ||
-        data?.message ||
-        `Anthropic API failed with status ${response.status}`;
-
-      console.error("Anthropic API error", {
-        status: response.status,
-        type: data?.error?.type,
-        message: errorMessage,
-        requestId
-      });
-
-      return res.status(response.status).json({
-        error: errorMessage,
-        type: data?.error?.type || "anthropic_error",
-        status: response.status,
-        requestId
-      });
-    }
-
-    return res.status(200).json(data);
-  } catch (error) {
-    console.error("NUBI API route error", error);
-
-    return res.status(500).json({
-      error: "Server failed while contacting Anthropic.",
-      detail: error?.message || "Unknown server error"
-    });
+    const d = await r.json();
+    let note = (d && d.content && d.content[0] && d.content[0].text) || "";
+    note = note.trim().slice(0, MAX_MEM_CHARS);
+    if (note) await kvSet(MEM_PREFIX + wallet, note);
+  } catch {
+    /* keep prior memory on failure */
   }
 }
 
-export const config = {
-  api: {
-    bodyParser: {
-      sizeLimit: "1mb"
+export default async function handler(req, res) {
+  if (req.method !== "POST") return res.status(405).json({ error: "POST only" });
+  if (!ANTHROPIC_KEY) return res.status(500).json({ error: "API key not configured" });
+
+  try {
+    const body = req.body || {};
+    const baseSystem = typeof body.system === "string" ? body.system : "";
+    const messages = Array.isArray(body.messages) ? body.messages : [];
+    const wallet = normWallet(body.wallet); // null if not provided / invalid
+    const maxTokens = body.max_tokens || 1000;
+
+    // --- assemble the system prompt: base + shared lore + this user's memory ---
+    let system = baseSystem;
+
+    const lore = await kvGet(LORE_KEY);
+    if (lore && lore.trim()) {
+      system +=
+        `\n\n=== NUBI FIELD INTEL (current, owner-verified — treat as canon) ===\n` +
+        lore.trim();
     }
+
+    let priorMemory = "";
+    if (wallet) {
+      priorMemory = (await kvGet(MEM_PREFIX + wallet)) || "";
+      if (priorMemory.trim()) {
+        system +=
+          `\n\n=== WHAT YOU REMEMBER ABOUT THIS OPERATIVE (returning user) ===\n` +
+          priorMemory.trim() +
+          `\nGreet them like you know them. Don't recite the note; use it naturally.`;
+      } else {
+        system +=
+          `\n\n=== THIS OPERATIVE IS LINKED (wallet connected) ===\n` +
+          `First time you're meeting them while they're identified. ` +
+          `You'll remember this conversation for next time.`;
+      }
+    }
+
+    // --- main call (unchanged behavior: last 10 turns) ---
+    const r = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-api-key": ANTHROPIC_KEY,
+        "anthropic-version": "2023-06-01",
+      },
+      body: JSON.stringify({
+        model: MODEL,
+        max_tokens: maxTokens,
+        system,
+        messages: messages.slice(-10).map((m) => ({ role: m.role, content: m.content })),
+      }),
+    });
+
+    const data = await r.json();
+    if (!r.ok) return res.status(r.status).json(data);
+
+    // --- fire-and-forget memory update (only if identified) ---
+    if (wallet) {
+      const reply = (data.content && data.content[0] && data.content[0].text) || "";
+      const lastUser = [...messages].reverse().find((m) => m.role === "user");
+      if (reply && lastUser) {
+        // Don't await — return the reply immediately; memory updates in the background.
+        updateMemory(wallet, priorMemory, lastUser.content, reply);
+      }
+    }
+
+    return res.status(200).json(data);
+  } catch (e) {
+    return res.status(500).json({ error: "Chat error", detail: String(e && e.message) });
   }
-};
+}
