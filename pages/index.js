@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useContext, createContext, Component } from "react";
-import { GlyphProvider, useGlyph } from "@use-glyph/sdk-react";
+import { GlyphWalletProvider, useGlyph } from "@use-glyph/sdk-react";
 
 const WalletCtx = createContext({ authenticated: false, connectedWallet: null, login: () => {}, logout: () => {} });
 
@@ -1266,11 +1266,11 @@ function NubiAIWithGlyph() {
   if (!PRIVY_APP_ID) return <NubiAI />;
   return (
     <WalletErrorBoundary fallback={<NubiAI />}>
-      <GlyphProvider privyAppId={PRIVY_APP_ID}>
+      <GlyphWalletProvider privyAppId={PRIVY_APP_ID}>
         <GlyphBridge>
           <NubiAI />
         </GlyphBridge>
-      </GlyphProvider>
+      </GlyphWalletProvider>
     </WalletErrorBoundary>
   );
 }
