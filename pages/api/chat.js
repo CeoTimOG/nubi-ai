@@ -6,6 +6,9 @@
 //   2. If the frontend sends a `wallet` (user opted into being remembered), pulls
 //      that wallet's memory and appends it too — and after the reply, updates it.
 //   3. If no wallet is sent, behaves EXACTLY like before: stateless, open to anyone.
+//   4. [FIX] Memory write is now AWAITED before responding. On Vercel, un-awaited
+//      background work is killed once the response is sent, so the note never saved.
+//   5. [NEW] GET /api/chat returns a KV health check so you can verify storage.
 //
 // The frontend still sends `system` (NUBI_SYSTEM + liveData). We append to it.
 //
@@ -89,6 +92,23 @@ async function updateMemory(wallet, priorMemory, userMsg, nubiReply) {
 }
 
 export default async function handler(req, res) {
+  // --- KV health check: visit /api/chat in a browser to verify memory storage ---
+  if (req.method === "GET") {
+    const probeKey = "nubi:diag:probe";
+    const stamp = "ok-" + Date.now();
+    const wrote = await kvSet(probeKey, stamp);
+    const readBack = await kvGet(probeKey);
+    return res.status(200).json({
+      kvConfigured: Boolean(KV_URL && KV_TOKEN),
+      wrote,
+      readBack,
+      roundTrip:
+        readBack === stamp
+          ? "KV OK — reads and writes are working"
+          : "KV FAILED — check KV_REST_API_URL / KV_REST_API_TOKEN",
+    });
+  }
+
   if (req.method !== "POST") return res.status(405).json({ error: "POST only" });
   if (!ANTHROPIC_KEY) return res.status(500).json({ error: "API key not configured" });
 
@@ -144,13 +164,14 @@ export default async function handler(req, res) {
     const data = await r.json();
     if (!r.ok) return res.status(r.status).json(data);
 
-    // --- fire-and-forget memory update (only if identified) ---
+    // --- memory update (only if identified) ---
+    // FIX: must AWAIT. On Vercel the function is frozen once the response is sent,
+    // so an un-awaited update never finishes and nothing is ever saved.
     if (wallet) {
       const reply = (data.content && data.content[0] && data.content[0].text) || "";
       const lastUser = [...messages].reverse().find((m) => m.role === "user");
       if (reply && lastUser) {
-        // Don't await — return the reply immediately; memory updates in the background.
-        updateMemory(wallet, priorMemory, lastUser.content, reply);
+        await updateMemory(wallet, priorMemory, lastUser.content, reply);
       }
     }
 
