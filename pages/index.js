@@ -1190,8 +1190,8 @@ function NubiAI() {
                       ) : (
                         <div style={{textAlign:"center"}}>
                           <div style={{fontSize:13,color:"rgba(233,213,255,0.85)",lineHeight:1.6,marginBottom:8}}>Holders get remembered. Tourists stay stateless.</div>
-                          <div style={{fontSize:12,color:"rgba(192,132,252,0.6)",lineHeight:1.55,marginBottom:20}}>Connect to let Nubi remember you across sessions. Stays entirely on this site \u2014 you never leave nubi.rareapepes.com. Linking is optional; anonymous chat works exactly the same.</div>
-                          <button onClick={login} style={{width:"100%",background:"linear-gradient(135deg, #c084fc 0%, #a855f7 55%, #9333ea 100%)",border:"2px solid rgba(233,213,255,0.9)",color:"#fff",fontFamily:"'Orbitron',sans-serif",fontSize:14,fontWeight:800,letterSpacing:2,padding:"15px",borderRadius:8,cursor:"pointer",textShadow:"0 1px 8px rgba(0,0,0,0.5)",boxShadow:"0 0 20px rgba(192,132,252,0.35)"}}>CONNECT WALLET</button>
+                          <div style={{fontSize:12,color:"rgba(192,132,252,0.6)",lineHeight:1.55,marginBottom:20}}>Connect to let Nubi remember you across sessions. Stays entirely on this site — you never leave nubi.rareapepes.com. Linking is optional; anonymous chat works exactly the same.</div>
+                          <button onClick={()=>{ setWalletModalOpen(false); login(); }} style={{width:"100%",background:"linear-gradient(135deg, #c084fc 0%, #a855f7 55%, #9333ea 100%)",border:"2px solid rgba(233,213,255,0.9)",color:"#fff",fontFamily:"'Orbitron',sans-serif",fontSize:14,fontWeight:800,letterSpacing:2,padding:"15px",borderRadius:8,cursor:"pointer",textShadow:"0 1px 8px rgba(0,0,0,0.5)",boxShadow:"0 0 20px rgba(192,132,252,0.35)"}}>CONNECT WALLET</button>
                         </div>
                       )}
                     </div>
