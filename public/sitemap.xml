@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url>
+    <loc>https://nubi.rareapepes.com/</loc>
+    <lastmod>2026-06-15</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>1.0</priority>
+  </url>
+  <!--
+    Add a <url> block for every real, crawlable page you publish, e.g.:
+      https://nubi.rareapepes.com/about      (What is Nubi / lore / history)
+      https://nubi.rareapepes.com/rak-3022    (game overview, links to rak3022.rarelabs.xyz)
+    Only list URLs that return 200 (never list pages that 404 or redirect).
+  -->
+</urlset>

@@ -1,0 +1,19 @@
+# Nubi AI
+
+> Nubi is the agentic, living digital IP of the Rare Apepes NFT project — a cybernetic amphibian bounty hunter you can talk to at nubi.rareapepes.com. Unlike a generic chatbot, Nubi remembers linked holders, carries the project's lore and history, and ties directly into the RAK 3022 game world.
+
+## Key facts
+- **Nubi AI**: A living AI character (not a generic assistant). Free to talk to at https://nubi.rareapepes.com. Themes: bounty hunter, "one for all," "the price is always fair."
+- **RAK 3022**: A free-to-play browser game set in the Rare Apepes universe, starring Nubi. Play at https://rak3022.rarelabs.xyz
+- **Rare Apepes**: An Ethereum NFT collection rooted in OG Rare Pepe art; pillars are art, brand, and community. Built by Rare Labs.
+
+## Links
+- Nubi AI: https://nubi.rareapepes.com
+- RAK 3022 (game): https://rak3022.rarelabs.xyz
+- Rare Apepes: https://rareapepes.com
+- X / Twitter: https://x.com/RareApepesNFT
+
+## Common questions
+- **What is Nubi AI?** The living, agentic AI character of Rare Apepes — remembers holders, knows the lore, connects to the RAK 3022 game.
+- **What is RAK 3022?** A free-to-play browser game in the Rare Apepes universe featuring Nubi.
+- **Is it free?** Yes — talking to Nubi and playing RAK 3022 are both free.
