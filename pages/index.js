@@ -1280,11 +1280,53 @@ function NubiAI() {
 // Set NEXT_PUBLIC_PRIVY_APP_ID in Vercel environment variables
 const PRIVY_APP_ID = process.env.NEXT_PUBLIC_PRIVY_APP_ID || "";
 
+// Preflight: Glyph's API must be reachable before we mount the provider.
+// A 503/CORS failure there was taking the whole page down.
+function useGlyphReachable() {
+  const [state, setState] = useState("checking"); // checking | up | down
+  useEffect(() => {
+    let cancelled = false;
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 3000);
+
+    fetch("https://useglyph.io/api/public/supported_chains", {
+      signal: ctrl.signal,
+      cache: "no-store",
+    })
+      .then((r) => { if (!cancelled) setState(r.ok ? "up" : "down"); })
+      .catch(() => { if (!cancelled) setState("down"); })
+      .finally(() => clearTimeout(timer));
+
+    return () => { cancelled = true; clearTimeout(timer); ctrl.abort(); };
+  }, []);
+  return state;
+}
+
 function NubiAIWithGlyph() {
   const [mounted, setMounted] = useState(false);
+  const glyph = useGlyphReachable();
+
   useEffect(() => { setMounted(true); }, []);
+
+  // Swallow async wallet errors so they can never kill the page
+  useEffect(() => {
+    const onRejection = (e) => {
+      const msg = String(e?.reason?.message || e?.reason || "");
+      if (msg.includes("glyph") || msg.includes("Failed to fetch")) {
+        console.warn("Wallet layer error suppressed:", e.reason);
+        e.preventDefault();
+      }
+    };
+    window.addEventListener("unhandledrejection", onRejection);
+    return () => window.removeEventListener("unhandledrejection", onRejection);
+  }, []);
+
   if (!mounted) return <div style={{position:"fixed",inset:0,background:"#06030e"}} />;
   if (!PRIVY_APP_ID) return <NubiAI />;
+
+  // Glyph down or still checking → run without wallet. Chat still works.
+  if (glyph !== "up") return <NubiAI />;
+
   return (
     <WalletErrorBoundary fallback={<NubiAI />}>
       <GlyphPrivyProvider appId={PRIVY_APP_ID}>
