@@ -22,7 +22,7 @@ const JSON_LD = {
 
 export default function Document() {
   return (
-    <Html lang="en">
+    <Html lang="en" style={{ background: "#06030e" }}>
       <Head>
         {/* ── Favicon & app icons ── */}
         <link rel="icon" href="/favicon.ico" sizes="any" />
@@ -63,7 +63,7 @@ export default function Document() {
         {/* ── Structured data (Google rich results + AI search comprehension) ── */}
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(JSON_LD) }} />
       </Head>
-      <body>
+      <body style={{ background: "#06030e", margin: 0 }}>
         <Main />
         <NextScript />
       </body>
