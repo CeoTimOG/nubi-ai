@@ -1,91 +1,71 @@
-# NUBI AI — Rare Apepes Companion
-## Deploy to Vercel (Free — 15 min setup)
+# NUBI AI (A.A.L.D.I aka Agentic AI Living Digital IP) — Rare Apepes Companion
 
-### What you need
-- A free GitHub account (github.com)
-- A free Vercel account (vercel.com)
-- Your Anthropic API key (console.anthropic.com)
+As the Rare Labs operator, I want the RARE SYNC holder flow proven end to end on a Vercel Preview with a real holding wallet, so that production promotion is a verified decision rather than an assumption.
 
----
+Acceptance criteria
+Anonymous Nubi chat works on the Preview with no wallet connected and no added friction.
+Wallet links through the existing Privy/Glyph flow without modification.
+Pressing RARE SYNC presents a plain signature message that states it does not authorize a transaction.
+After signing, owned assets across all four approved collections are detected and displayed correctly.
+SYNC SIGNAL completes and Sync Score renders.
+For a wallet owning more than 24 assets, an item beyond the first 24 is selectable as Active Sync Asset.
+Sending Nubi a message completes DIRECT CHANNEL after a RARE SYNC refresh.
+Opening RAK 3022 from the integrated Play button and keeping the modal open ≥5 minutes completes ENTER RAK 3022 after close + refresh.
+Closing and reopening the browser tab preserves the session until 24-hour expiry.
+Switching to a second wallet does not expose the first wallet's Sync Score or activity.
+A bare wallet address without its RARE SYNC session cannot read, load, update, or delete private Nubi memory via /api/brain.
+A wallet owning none of the approved assets may verify wallet control but remains ineligible.
+The full flow passes at a mobile-width viewport.
+Closing the RAK modal while game_start is still in flight does not orphan a game session.
+Dev notes — embedded context
 
-### STEP 1 — Upload to GitHub
+Do not read the whole repo. Everything needed is here.
 
-1. Go to **github.com** → click the **+** icon → **New repository**
-2. Name it `nubi-ai` → click **Create repository**
-3. On the next page, click **uploading an existing file**
-4. Drag the entire `nubi-ai` folder contents into the upload area
-5. Click **Commit changes**
+Relevant modules
+lib/rare-sync/auth.js — createChallenge (single-use nonce, 10 min), verifyChallenge, createSession (random, 24h), getSession
+lib/rare-sync/eligibility.js — getEligibleHoldings, OpenSea V2 across all four collections, fails closed on partial data or pagination ceiling
+lib/rare-sync/profile.js — verifyAndUpdateProfile, selectActiveAsset, markNubi, startGame, stopGame
+lib/rare-sync/score.js — utcDay, blankDaily, calculateScore, completedBounties, dailyXp
+components/RareSyncPanel.js — entire UI surface
+pages/api/rare-sync/{challenge,sync,status,activity,health}.js
+Bounty definitions (source of truth: RARE_SYNC.dailyBounties in lib/rare-sync/config.js)
+Key	Trigger	XP
+sync	Verified eligible wallet	100
+nubi	Successful Nubi reply after sync	150
+rak	Authenticated RAK session ≥300s	250
 
----
+Day boundaries are UTC, via utcDay(). Game session is capped at 2 hours server-side.
 
-### STEP 2 — Deploy on Vercel
+Approved collections
+Rare Apepes 0x31d45de84fde2fb36575085e05754a4932dd5170 (721)
+Zombie Apepes 0xf902a8baf88793ddf636a8791bd55a62b71c9ef4 (721)
+Apepe Odyssey 0x1e50c58f9d26298a9c7c4f3050c43eb29ea4a0f0 (1155)
+Apepe Loot 0x86440bb01856c2f537498f3de1413ca345d578f6 (1155)
+Environment (points mode)
 
-1. Go to **vercel.com** → click **Sign Up** → choose **Continue with GitHub**
-2. Click **Add New → Project**
-3. Find `nubi-ai` in the list → click **Import**
-4. Leave all settings as default → click **Deploy**
-5. Wait ~60 seconds — Vercel builds and deploys automatically
+NEXT_PUBLIC_RARE_SYNC_MODE=points, NEXT_PUBLIC_RARE_SYNC_CHAIN_ID=46630. Token/rewards/signer/TBA vars must be blank. OPENSEA_API_KEY is required — OpenSea V2 account-NFT API needs x-api-key.
 
----
+Constraints
+This story is test execution only. If a defect is found, raise a new story; do not patch opportunistically inside this one.
+Do not modify the live RAK deployment. The embedded game points at the existing public URL.
+Do not weaken session binding to make a test pass.
+Testing
 
-### STEP 3 — Add your API key (IMPORTANT)
+Execute AC1–14 in order on the Preview URL. For each, record: pass/fail, browser, wallet address used (holder vs non-holder), and screenshot for AC4, AC6, AC10.
 
-Without this step the chat won't work.
+Cross-wallet isolation (AC10, AC11) is the release-blocking test. Any leakage of one wallet's private data to another halts the epic.
 
-1. In your Vercel dashboard, click your project → **Settings** tab
-2. Click **Environment Variables** in the left sidebar
-3. Add:
-   - **Name:** `ANTHROPIC_API_KEY`
-   - **Value:** your API key from console.anthropic.com
-4. Click **Save**
-5. Go back to **Deployments** → click the three dots on your latest deployment → **Redeploy**
+Suggested wallets: one owning >24 assets across at least two collections; one owning exactly one asset; one owning none.
 
----
+Definition of done
 
-### STEP 4 — Get your public URL
+All 14 criteria pass on desktop and mobile viewport, evidence recorded, no open P1 defects. Story 1.7 (promote to production) is unblocked only on this.
 
-After redeployment completes, Vercel shows your URL:
-`https://nubi-ai-xxxx.vercel.app`
+Dev agent record
 
-That's it. Share that link anywhere — no login required for visitors.
+To be completed by the implementing agent.
 
----
-
-### Setting an API budget limit (recommended)
-To prevent unexpected costs if the link goes viral:
-1. Go to **console.anthropic.com** → **Settings** → **Limits**
-2. Set a monthly spend limit (e.g. $20)
-3. Anthropic will stop the API after that amount — you'll never be surprised
-
----
-
-### Your links to promote
-- Game: https://rak3022.rarelabs.xyz
-- Collection: https://opensea.io/collection/rare-apepes
-- Discord: https://discord.gg/czW3CfqbKK
-
----
-
-## Important fixed deployment structure
-
-This Next.js project must keep files in this layout:
-
-```text
-nubi-ai/
-  package.json
-  next.config.js
-  pages/
-    index.js
-    api/
-      chat.js
-```
-
-Do not deploy `nubi-standalone.html`. It is not needed for the Vercel/Next.js version and can expose client-side secrets.
-
-After uploading this folder to GitHub, set the Vercel environment variable:
-
-```text
-ANTHROPIC_API_KEY=your_anthropic_key_here
-```
-
-Then redeploy the project from Vercel.
+Agent/model used:
+Debug log:
+Completion notes:
+File list changed:
