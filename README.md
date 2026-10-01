@@ -23,11 +23,17 @@ Do not read the whole repo. Everything needed is here.
 
 Relevant modules
 lib/rare-sync/auth.js — createChallenge (single-use nonce, 10 min), verifyChallenge, createSession (random, 24h), getSession
+
 lib/rare-sync/eligibility.js — getEligibleHoldings, OpenSea V2 across all four collections, fails closed on partial data or pagination ceiling
+
 lib/rare-sync/profile.js — verifyAndUpdateProfile, selectActiveAsset, markNubi, startGame, stopGame
+
 lib/rare-sync/score.js — utcDay, blankDaily, calculateScore, completedBounties, dailyXp
+
 components/RareSyncPanel.js — entire UI surface
+
 pages/api/rare-sync/{challenge,sync,status,activity,health}.js
+
 Bounty definitions (source of truth: RARE_SYNC.dailyBounties in lib/rare-sync/config.js)
 Key	Trigger	XP
 sync	Verified eligible wallet	100
@@ -37,10 +43,15 @@ rak	Authenticated RAK session ≥300s	250
 Day boundaries are UTC, via utcDay(). Game session is capped at 2 hours server-side.
 
 Approved collections
+
 Rare Apepes 0x31d45de84fde2fb36575085e05754a4932dd5170 (721)
+
 Zombie Apepes 0xf902a8baf88793ddf636a8791bd55a62b71c9ef4 (721)
+
 Apepe Odyssey 0x1e50c58f9d26298a9c7c4f3050c43eb29ea4a0f0 (1155)
+
 Apepe Loot 0x86440bb01856c2f537498f3de1413ca345d578f6 (1155)
+
 Environment (points mode)
 
 NEXT_PUBLIC_RARE_SYNC_MODE=points, NEXT_PUBLIC_RARE_SYNC_CHAIN_ID=46630. Token/rewards/signer/TBA vars must be blank. OPENSEA_API_KEY is required — OpenSea V2 account-NFT API needs x-api-key.
