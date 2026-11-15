@@ -48,7 +48,7 @@ function Flow({ ret }) {
       if (!at) throw new Error("No sign-in token from Glyph. Try again.");
       const r = await fetch("/api/rak/session", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ privyToken: at }) });
       const j = await r.json().catch(() => ({}));
-      if (!j.ok) throw new Error(j.error === "login_not_configured" ? "Sign-in isn't switched on yet." : "Sign-in failed (" + (j.error || r.status) + ").");
+      if (!j.ok) throw new Error(j.error === "login_not_configured" ? "Sign-in isn't switched on yet." : "Sign-in failed (" + (j.error || r.status) + (j.detail ? ": " + j.detail : "") + ").");
       setProf(j.profile);
       const holds = Object.values(j.profile.badges || {}).some((n) => n > 0);
       if (popup) deliver(j.token, j.profile);
