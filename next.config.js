@@ -7,6 +7,7 @@ const nextConfig = {
       ...(config.resolve.alias || {}),
       "@farcaster/mini-app-solana": false,
       "@solana-program/memo": false,
+      "@solana-program/system": false,
       "@abstract-foundation/agw-client": false,
       "@abstract-foundation/agw-client/actions": false,
       "@stripe/crypto": false,
