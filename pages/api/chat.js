@@ -14,6 +14,8 @@
 //
 // ENV: ANTHROPIC_API_KEY (existing). KV_REST_API_URL / KV_REST_API_TOKEN (for memory).
 
+import { getVault, vaultBlock } from "../../lib/rak/vault";
+
 const ANTHROPIC_KEY = process.env.ANTHROPIC_API_KEY;
 const KV_URL = process.env.KV_REST_API_URL;
 const KV_TOKEN = process.env.KV_REST_API_TOKEN;
@@ -143,6 +145,15 @@ export default async function handler(req, res) {
           `First time you're meeting them while they're identified. ` +
           `You'll remember this conversation for next time.`;
       }
+    }
+
+    // --- live vault: what their connected wallets hold (verified with their Privy token; never blocks the chat) ---
+    if (typeof body.privyToken === "string" && body.privyToken) {
+      const v = await Promise.race([
+        getVault(body.privyToken, false).catch((e) => ({ ok: false, error: e.message })),
+        new Promise((ok) => setTimeout(() => ok({ ok: false, error: "timeout" }), 8000)),
+      ]);
+      system += vaultBlock(v);
     }
 
     // --- main call (unchanged behavior: last 10 turns) ---
