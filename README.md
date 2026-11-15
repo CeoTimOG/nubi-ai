@@ -82,3 +82,25 @@ _To be completed by the implementing agent._
 - Debug log:
 - Completion notes:
 - File list changed:
+
+---
+
+## RAK 3022 game hub (`/api/rak/*`, `/rak`)
+
+Powers the in-game hub on mobile.rareapepes.com: Nubi chat, run stats, leaderboards and the Glyph player card.
+
+| Route | What it does |
+| --- | --- |
+| `GET /rak` | Glyph sign-in page the game opens in a pop-up (or redirects to). Returns a 30-day game token to the game. |
+| `POST /api/rak/session` | Privy access token in, game token + profile out. Reads the player's wallets from Privy and their NFTs from OpenSea. |
+| `GET/POST /api/rak/me` | Profile, holdings, ranks. Rename; pick the NFT used as the player card. |
+| `POST /api/rak/run` | `start` / `split` (level cleared) / `finish` a run. Guests get a score; signed-in players are posted. |
+| `GET /api/rak/leaderboard` | `board=score\|speed\|kills\|coins\|bosses\|apepes\|lvl1..lvl6`, `period=all\|week`. |
+| `POST /api/rak/nubi` | In-game Nubi: shared persona (`lib/nubi-persona.js`) + field manual (`lib/rak/guide.js`) + lore from KV + live game state. |
+| `POST /api/rak/admin` | `x-admin-secret: ADMIN_SECRET`. `flags`, `remove`, `ban`, `unban`, `rename` by player id. |
+
+**New env var:** `PRIVY_APP_SECRET` (Privy dashboard > App settings > API keys). Optional: `RAK_GAME_SECRET` (token signing; derived from the Privy secret if unset), `PRIVY_VERIFICATION_KEY`, `RAK_ORIGINS` (extra comma-separated game origins).
+Existing vars used: `NEXT_PUBLIC_PRIVY_APP_ID`, `KV_REST_API_URL`, `KV_REST_API_TOKEN`, `OPENSEA_API_KEY`, `ANTHROPIC_API_KEY`, `ADMIN_SECRET`.
+
+KV keys: `rak:prof:<pid>`, `rak:pub` (public cards), `rak:hold:<pid>` (15 min), `rak:run:<id>` (7 days), `rak:lb:<board>:all|<week>`, `rak:flags`, `rak:ban:<pid>`, `rak:rl:*`.
+Run stats come from the player's browser: they are checked against the server's clock and plausibility limits, which stops casual tampering but is not cheat-proof. Rejected runs land in `rak:flags`.
