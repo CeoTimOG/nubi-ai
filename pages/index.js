@@ -15,11 +15,12 @@ function GlyphBridge({ children }) {
     try {
       const t = await getAccessToken(); if (!t) return;
       const r = await fetch("/api/holdings", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ privyToken: t, refresh: !!refresh }) });
-      const j = await r.json(); if (j && j.ok) setVault(j);
+      const j = await r.json(); setVault(j && (j.ok || j.error || j.reason) ? j : null);
     } catch (e) { /* Nubi still works without it */ }
   }, [getAccessToken]);
   useEffect(() => { if (authenticated && connectedWallet) loadVault(false); else setVault(null); }, [authenticated, connectedWallet]); // eslint-disable-line
-  return <WalletCtx.Provider value={{ authenticated, connectedWallet, login, logout, vault, refreshVault: () => loadVault(true) }}>{children}</WalletCtx.Provider>;
+  const getToken = useCallback(async () => { try { return authenticated ? await getAccessToken() : null; } catch (e) { return null; } }, [authenticated, getAccessToken]);
+  return <WalletCtx.Provider value={{ authenticated, connectedWallet, login, logout, vault, refreshVault: () => loadVault(true), getToken }}>{children}</WalletCtx.Provider>;
 }
 
 class WalletErrorBoundary extends Component {
@@ -99,25 +100,9 @@ function renderInline(text, keyPrefix) {
   return out;
 }
 
-// The operative's holdings as a block of Nubi's context.
-function vaultText(v) {
-  if (!v || !v.ok) return "";
-  const short = (a) => a.slice(0, 6) + "..." + a.slice(-4);
-  const kind = { glyph: "Glyph", "glyph-linked": "linked in Glyph", linked: "linked", embedded: "embedded", smart: "smart wallet" };
-  const lines = ["", "", "=== THIS OPERATIVE'S VAULT (read live from their connected Glyph wallet and every wallet linked to it; verified by the server) ==="];
-  lines.push("Wallets: " + v.wallets.map((w) => short(w.address) + " (" + (kind[w.kind] || w.kind) + ")").join(", "));
-  let total = 0;
-  (v.collections || []).forEach((c) => {
-    const ids = v.items.filter((it) => it.c === c.key).map((it) => "#" + it.id), n = v.counts[c.key] || 0; total += n;
-    lines.push(c.name + (c.slug ? " (slug " + c.slug + ")" : "") + ": " + n + (n ? ": " + ids.slice(0, 60).join(", ") + (n > 60 ? ", and more" : "") : ""));
-  });
-  lines.push("Total: " + total + ". You CAN see this. When they ask what they hold, answer from this list with exact counts and token numbers. To show one, use [SHOW_NFT:slug:tokenId] with the slug above. Only quote full wallet addresses if they ask.");
-  return lines.join("\n");
-}
-
 function NubiAI() {
   const [phase, setPhase] = useState("intro");
-  const { authenticated, connectedWallet, login, logout, vault } = useContext(WalletCtx);
+  const { authenticated, connectedWallet, login, logout, vault, getToken } = useContext(WalletCtx);
   const [holoTvOn, setHoloTvOn] = useState(false);
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
@@ -370,9 +355,10 @@ function NubiAI() {
         body:JSON.stringify({
           model:"claude-haiku-4-5-20251001",
           max_tokens:1000,
-          system:NUBI_SYSTEM + liveData + vaultText(vault),
+          system:NUBI_SYSTEM + liveData,
           messages:next.map(m => ({role:m.role, content:m.content})),
-          wallet: connectedWallet || undefined
+          wallet: connectedWallet || undefined,
+          privyToken: (getToken && connectedWallet) ? (await getToken()) || undefined : undefined
         })
       });
       const d = await r.json();
@@ -620,7 +606,7 @@ function NubiAI() {
                   <span style={{fontSize:9,color:"rgba(192,132,252,0.36)",border:"1px solid rgba(192,132,252,0.13)",padding:"3px 6px",borderRadius:3,letterSpacing:2}}>R.A.M.U.</span>
                   <button onClick={()=>{ setOwnerOpen(o=>!o); setBroadcast(b=> b || lastNubi()); }} title="Owner controls" style={{background:"transparent",border:"1px solid rgba(192,132,252,0.18)",color:ownerOpen?"#c084fc":"rgba(192,132,252,0.4)",fontSize:11,padding:"3px 7px",borderRadius:3,cursor:"pointer",letterSpacing:1}}>{"\u26a1"}</button>
                   {authenticated ? (
-                    <button onClick={()=>setWalletModalOpen(true)} title={connectedWallet ? "Wallet: " + connectedWallet.slice(0,6)+"..."+connectedWallet.slice(-4) : "Connected"} style={{background:"rgba(192,132,252,0.08)",border:"1px solid rgba(192,132,252,0.35)",color:"#c084fc",fontSize:10,padding:"3px 8px",borderRadius:3,cursor:"pointer",letterSpacing:1,fontFamily:"'Share Tech Mono',monospace"}}>{"\u25c6 " + (connectedWallet ? connectedWallet.slice(0,6)+"..."+connectedWallet.slice(-4) : "LINKED") + (vault && vault.ok ? " \u00b7 " + Object.values(vault.counts || {}).reduce((a, b) => a + b, 0) + " NFTS" : "")}</button>
+                    <button onClick={()=>setWalletModalOpen(true)} title={connectedWallet ? "Wallet: " + connectedWallet.slice(0,6)+"..."+connectedWallet.slice(-4) : "Connected"} style={{background:"rgba(192,132,252,0.08)",border:"1px solid rgba(192,132,252,0.35)",color:"#c084fc",fontSize:10,padding:"3px 8px",borderRadius:3,cursor:"pointer",letterSpacing:1,fontFamily:"'Share Tech Mono',monospace"}}>{"\u25c6 " + (connectedWallet ? connectedWallet.slice(0,6)+"..."+connectedWallet.slice(-4) : "LINKED") + (vault ? (vault.ok ? " \u00b7 " + Object.values(vault.counts || {}).reduce((a, b) => a + b, 0) + " NFTS" : " \u00b7 SCAN FAILED") : "")}</button>
                   ) : (
                     <button onClick={()=>setWalletModalOpen(true)} title="Link wallet to be remembered across sessions" style={{background:"transparent",border:"1px solid rgba(192,132,252,0.22)",color:"rgba(192,132,252,0.55)",fontSize:10,padding:"3px 8px",borderRadius:3,cursor:"pointer",letterSpacing:1,fontFamily:"'Share Tech Mono',monospace"}}>{"\u25c6 LINK WALLET TO BE REMEMBERED"}</button>
                   )}
