@@ -8,7 +8,7 @@ export default async function handler(req, res) {
   if (cors(req, res, "POST")) return;
   if (req.method !== "POST") return res.status(405).json({ ok: false, error: "post_only" });
   if (!privyConfigured()) return res.status(503).json({ ok: false, error: "login_not_configured" });
-  if (!(await limit("sess:" + sha(clientIp(req)).slice(0, 16), 30, 600))) return res.status(429).json({ ok: false, error: "slow_down" });
+  if (!(await limit("sess:" + sha(clientIp(req)).slice(0, 16), 60, 600))) return res.status(429).json({ ok: false, error: "slow_down" });
 
   let did;
   try { did = await verifyAccessToken(body(req).privyToken); }
@@ -16,7 +16,7 @@ export default async function handler(req, res) {
 
   try {
     const pid = playerId(did);
-    const wallets = await privyWallets(did);
+    const wallets = await privyWallets(did).catch((e) => { throw new Error("wallets: " + e.message + (/401|403/.test(e.message) ? " (PRIVY_APP_SECRET not accepted)" : "")); });
     const p = (await getProfile(pid)) || newProfile(pid, did, wallets);
     p.wallets = wallets;
     const h = await holdingsFor(p, true).catch(() => null);
